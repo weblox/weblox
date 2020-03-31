@@ -1,0 +1,14 @@
+Description: webloxiodns
+Resources:
+  webloxioprivatedns:
+    Properties:
+      Name: private.eu-west-1.weblox.io
+      VPCs:
+        - VPCId: vpc-0e2786487ff4f2ef4
+          VPCRegion: eu-west-1
+    Type: AWS::Route53::HostedZone
+  webloxiopublicdns:
+    Properties:
+      Name: public.eu-west-1.weblox.io
+    Type: AWS::Route53::HostedZone
+
