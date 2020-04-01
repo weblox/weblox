@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  euwest1ecslive:
+    Properties:
+      ClusterName: live
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+    Type: AWS::ECS::Cluster
+  euwest1ecsliveautoscalinggroup:
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref 'euwest1ecslivelaunchtemplate'
+        Version: !GetAtt 'euwest1ecslivelaunchtemplate.LatestVersionNumber'
+      MaxSize: 0
+      MinSize: 0
+      VPCZoneIdentifier:
+        - subnet-0777c674d3018efd6
+        - subnet-0dec29b6660100d8d
+        - subnet-095d86cbe447af65e
+    Type: AWS::AutoScaling::AutoScalingGroup
+  euwest1ecslivelaunchtemplate:
+    Properties:
+      LaunchTemplateData:
+        BlockDeviceMappings:
+          - DeviceName: /dev/xvda
+            Ebs:
+              VolumeSize: 30
+        CreditSpecification:
+          CpuCredits: Unlimited
+        ImageId: ami-09cec0d91e6d220ea
+        InstanceType: t3.micro
+      LaunchTemplateName: ecs-live-launch-template
+    Type: AWS::EC2::LaunchTemplate
+
