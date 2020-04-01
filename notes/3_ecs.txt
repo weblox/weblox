@@ -1,0 +1,4 @@
+keypair
+launchtemplate
+asg
+security group

@@ -12,8 +12,8 @@ Resources:
       LaunchTemplate:
         LaunchTemplateId: !Ref 'euwest1ecslivelaunchtemplate'
         Version: !GetAtt 'euwest1ecslivelaunchtemplate.LatestVersionNumber'
-      MaxSize: 0
-      MinSize: 0
+      MaxSize: 1
+      MinSize: 1
       VPCZoneIdentifier:
         - subnet-0777c674d3018efd6
         - subnet-0dec29b6660100d8d
@@ -30,6 +30,26 @@ Resources:
           CpuCredits: Unlimited
         ImageId: ami-09cec0d91e6d220ea
         InstanceType: t3.micro
+        KeyName: live-eu-west-1
+        SecurityGroupIds:
+          - !GetAtt 'euwest1ecslivesg.GroupId'
       LaunchTemplateName: ecs-live-launch-template
     Type: AWS::EC2::LaunchTemplate
+  euwest1ecslivesg:
+    Properties:
+      GroupDescription: Security Group for ECS Live Cluster
+      VpcId: vpc-0e2786487ff4f2ef4
+    Type: AWS::EC2::SecurityGroup
+  euwest1ecslivesgingresscluster:
+    Properties:
+      GroupId: !GetAtt 'euwest1ecslivesg.GroupId'
+      IpProtocol: '-1'
+      SourceSecurityGroupId: !GetAtt 'euwest1ecslivesg.GroupId'
+    Type: AWS::EC2::SecurityGroupIngress
+  euwest1ecslivesgingressmanagement:
+    Properties:
+      CidrIp: 86.162.12.72/32
+      GroupId: !GetAtt 'euwest1ecslivesg.GroupId'
+      IpProtocol: '-1'
+    Type: AWS::EC2::SecurityGroupIngress
 
