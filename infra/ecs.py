@@ -4,9 +4,10 @@ from troposphere import GetAtt, Ref, Template
 # from troposphere.autoscaling import AutoScalingGroup, LaunchConfiguration
 # from troposphere.ec2 import LaunchTemplate
 from troposphere.autoscaling import AutoScalingGroup, LaunchConfiguration, LaunchTemplateSpecification
-from troposphere.ec2 import EBSBlockDevice, LaunchTemplate, LaunchTemplateCreditSpecification, LaunchTemplateBlockDeviceMapping, LaunchTemplateData
+from troposphere.ec2 import EBSBlockDevice, LaunchTemplate, LaunchTemplateCreditSpecification, LaunchTemplateBlockDeviceMapping, LaunchTemplateData, IamInstanceProfile
 from troposphere.ecs import Cluster, ClusterSetting
 from troposphere.ec2 import SecurityGroup, SecurityGroupIngress, SecurityGroupRule
+from troposphere.iam import Role, Policy, InstanceProfile
 
 from troposphere.ec2 import CreditSpecification
 
@@ -54,6 +55,60 @@ cluster = Cluster(
     ]
 )
 
+ecs_role = Role(
+    region.replace("-", "") + "ecsrole",
+    AssumeRolePolicyDocument = {
+        "Statement": [{
+            "Action": "sts:AssumeRole",
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "ec2.amazonaws.com"
+            }
+        }]    
+    },
+    ManagedPolicyArns = [
+        "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM",
+        "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
+    ],
+    Policies = [
+        Policy(
+            PolicyName = "ecs-service",
+            PolicyDocument = {
+                "Statement": [{
+                    "Effect": "Allow",
+                    "Action": [
+                        "ecs:CreateCluster",
+                        "ecs:DeregisterContainerInstance",
+                        "ecs:DiscoverPollEndpoint",
+                        "ecs:Poll",
+                        "ecs:RegisterContainerInstance",
+                        "ecs:StartTelemetrySession",
+                        "ecs:Submit*",
+                        "ecr:BatchCheckLayerAvailability",
+                        "ecr:BatchGetImage",
+                        "ecr:GetDownloadUrlForLayer",
+                        "ecr:GetAuthorizationToken"
+                    ],
+                    "Resource": "*"
+                }]
+            }
+        )
+    ]
+)
+
+template.add_resource(ecs_role)
+
+ecs_instance_profile = InstanceProfile(
+    region.replace("-", "") + "ecsinstanceprofile",
+    Path = "/",
+    Roles = [
+        Ref(ecs_role)
+    ]
+)
+
+template.add_resource(ecs_instance_profile)
+
+
 launch_template = LaunchTemplate(
     region.replace("-", "") + "ecslivelaunchtemplate",
     LaunchTemplateName = "ecs-live-launch-template",
@@ -72,6 +127,10 @@ launch_template = LaunchTemplate(
             CpuCredits = "Unlimited"
         ),
         InstanceType = "t3.micro",
+        IamInstanceProfile = IamInstanceProfile(
+            region.replace("-", "") + "ecsliveiaminstanceprofile",
+            Arn = GetAtt(ecs_instance_profile, "Arn")
+        ),
         KeyName = "live-eu-west-1",
         SecurityGroupIds = [
             GetAtt(security_group, "GroupId")

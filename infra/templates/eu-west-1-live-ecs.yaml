@@ -1,5 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Resources:
+  euwest1ecsinstanceprofile:
+    Properties:
+      Path: /
+      Roles:
+        - !Ref 'euwest1ecsrole'
+    Type: AWS::IAM::InstanceProfile
   euwest1ecslive:
     Properties:
       ClusterName: live
@@ -28,6 +34,8 @@ Resources:
               VolumeSize: 30
         CreditSpecification:
           CpuCredits: Unlimited
+        IamInstanceProfile:
+          Arn: !GetAtt 'euwest1ecsinstanceprofile.Arn'
         ImageId: ami-09cec0d91e6d220ea
         InstanceType: t3.micro
         KeyName: live-eu-west-1
@@ -48,8 +56,38 @@ Resources:
     Type: AWS::EC2::SecurityGroupIngress
   euwest1ecslivesgingressmanagement:
     Properties:
-      CidrIp: 86.162.12.72/32
+      CidrIp: 86.162.11.226/32
       GroupId: !GetAtt 'euwest1ecslivesg.GroupId'
       IpProtocol: '-1'
     Type: AWS::EC2::SecurityGroupIngress
+  euwest1ecsrole:
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyDocument:
+            Statement:
+              - Action:
+                  - ecs:CreateCluster
+                  - ecs:DeregisterContainerInstance
+                  - ecs:DiscoverPollEndpoint
+                  - ecs:Poll
+                  - ecs:RegisterContainerInstance
+                  - ecs:StartTelemetrySession
+                  - ecs:Submit*
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:BatchGetImage
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:GetAuthorizationToken
+                Effect: Allow
+                Resource: '*'
+          PolicyName: ecs-service
+    Type: AWS::IAM::Role
 
