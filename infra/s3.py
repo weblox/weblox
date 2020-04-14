@@ -8,7 +8,7 @@ template = Template(
 
 management_bucket = Bucket(
     region.replace("-", "") + "managementbucket",
-    BucketName = "mgmt.weblox.io",
+    BucketName = "mgmt.eu-west-1.weblox.io",
     BucketEncryption = BucketEncryption(
         ServerSideEncryptionConfiguration = [
             ServerSideEncryptionRule(

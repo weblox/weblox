@@ -68,7 +68,7 @@ ecs_role = Role(
         }]    
     },
     ManagedPolicyArns = [
-        "arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM",
+        "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
         "arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy"
     ],
     Policies = [
@@ -88,42 +88,39 @@ ecs_role = Role(
                         "ecr:BatchCheckLayerAvailability",
                         "ecr:BatchGetImage",
                         "ecr:GetDownloadUrlForLayer",
-                        "ecr:GetAuthorizationToken"
+                        "ecr:GetAuthorizationToken",
+                        "s3:ListAllMyBuckets"
                     ],
                     "Resource": "*"
                 },
                 {
                     "Effect": "Allow",
-                    "Action": [ 
-                        "s3:ListBucket",
+                    "Action": [
+                        "s3:ListBucket*",
+                        "s3:ListObjects*",
                         "s3:GetBucketLocation",
-                        "s3:GetObject"
+                        "s3:GetObject*"
                     ],
-                    "Resource": Join("", [
-                        "arn:aws:s3:::",
-                        Ref("AWS::AccountId"),
-                        "/mgmt.weblox.io"
-                    ])
+                    "Resource": [
+                        "arn:aws:s3:::mgmt.eu-west-1.weblox.io",
+                        "arn:aws:s3:::mgmt.eu-west-1.weblox.io/*"
+                    ]
                 },
                 {
                     "Effect": "Allow",
-                    "Action": "s3:PutObject",
-                    "Resource": Join("", [
-                        "arn:aws:s3:::",
-                        Ref("AWS::AccountId"),
-                        "/mgmt.weblox.io",
-                        "/logs/"
-                    ])
+                    "Action": "s3:PutObject*",
+                    "Resource": [
+                        "arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs",
+                        "arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs/*"
+                    ]
                 },
                 {
                     "Effect": "Deny",
-                    "Action": "s3:GetObject",
-                    "Resource": Join("", [
-                        "arn:aws:s3:::",
-                        Ref("AWS::AccountId"),
-                        "/mgmt.weblox.io",
-                        "/logs/"
-                    ])
+                    "Action": "s3:GetObject*",
+                    "Resource": [
+                        "arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs",
+                        "arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs/*"
+                    ]
                 }]
             }
         )

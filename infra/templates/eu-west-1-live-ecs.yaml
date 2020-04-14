@@ -70,7 +70,7 @@ Resources:
             Principal:
               Service: ec2.amazonaws.com
       ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
         - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
       Policies:
         - PolicyDocument:
@@ -87,34 +87,28 @@ Resources:
                   - ecr:BatchGetImage
                   - ecr:GetDownloadUrlForLayer
                   - ecr:GetAuthorizationToken
+                  - s3:ListAllMyBuckets
                 Effect: Allow
                 Resource: '*'
               - Action:
-                  - s3:ListBucket
+                  - s3:ListBucket*
+                  - s3:ListObjects*
                   - s3:GetBucketLocation
-                  - s3:GetObject
+                  - s3:GetObject*
                 Effect: Allow
-                Resource: !Join
-                  - ''
-                  - - 'arn:aws:s3:::'
-                    - !Ref 'AWS::AccountId'
-                    - /mgmt.weblox.io
-              - Action: s3:PutObject
+                Resource:
+                  - arn:aws:s3:::mgmt.eu-west-1.weblox.io
+                  - arn:aws:s3:::mgmt.eu-west-1.weblox.io/*
+              - Action: s3:PutObject*
                 Effect: Allow
-                Resource: !Join
-                  - ''
-                  - - 'arn:aws:s3:::'
-                    - !Ref 'AWS::AccountId'
-                    - /mgmt.weblox.io
-                    - /logs/
-              - Action: s3:GetObject
+                Resource:
+                  - arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs
+                  - arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs/*
+              - Action: s3:GetObject*
                 Effect: Deny
-                Resource: !Join
-                  - ''
-                  - - 'arn:aws:s3:::'
-                    - !Ref 'AWS::AccountId'
-                    - /mgmt.weblox.io
-                    - /logs/
+                Resource:
+                  - arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs
+                  - arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs/*
           PolicyName: ecs-service
     Type: AWS::IAM::Role
 
