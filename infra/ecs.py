@@ -169,13 +169,7 @@ launch_template = LaunchTemplate(
         ],
         UserData = Base64(
             "#!/bin/bash\n" \
-            "echo 1\n"
-            # "yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm\n" \
-            # "yum install -y https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm\n" \
-            # "yum install -y aws-cfn-bootstrap hibagent\n" \
-            # "/opt/aws/bin/cfn-init -v --region eu-west-1 --stack live-ecs --resource ECSLaunchConfiguration\n" \
-            # "/opt/aws/bin/cfn-signal -e $? --region eu-west-1 --stack live-ecs --resource ECSAutoScalingGroup\n" \
-            # "/usr/bin/enable-ec2-spot-hibernation\n"
+            "/usr/bin/yum install -y awscli && aws s3 cp s3://mgmt.eu-west-1.weblox.io/init.sh /root/init.sh && chmod 700 /root/init.sh && /root/init.sh\n"
         )
     ),
     # Metadata=Metadata(
