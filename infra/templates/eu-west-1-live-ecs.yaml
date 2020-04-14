@@ -41,6 +41,7 @@ Resources:
         KeyName: live-eu-west-1
         SecurityGroupIds:
           - !GetAtt 'euwest1ecslivesg.GroupId'
+        UserData: !Base64 "#!/bin/bash\necho 1\n"
       LaunchTemplateName: ecs-live-launch-template
     Type: AWS::EC2::LaunchTemplate
   euwest1ecslivesg:
@@ -88,6 +89,32 @@ Resources:
                   - ecr:GetAuthorizationToken
                 Effect: Allow
                 Resource: '*'
+              - Action:
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                  - s3:GetObject
+                Effect: Allow
+                Resource: !Join
+                  - ''
+                  - - 'arn:aws:s3:::'
+                    - !Ref 'AWS::AccountId'
+                    - /mgmt.weblox.io
+              - Action: s3:PutObject
+                Effect: Allow
+                Resource: !Join
+                  - ''
+                  - - 'arn:aws:s3:::'
+                    - !Ref 'AWS::AccountId'
+                    - /mgmt.weblox.io
+                    - /logs/
+              - Action: s3:GetObject
+                Effect: Deny
+                Resource: !Join
+                  - ''
+                  - - 'arn:aws:s3:::'
+                    - !Ref 'AWS::AccountId'
+                    - /mgmt.weblox.io
+                    - /logs/
           PolicyName: ecs-service
     Type: AWS::IAM::Role
 

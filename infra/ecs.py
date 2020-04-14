@@ -1,14 +1,15 @@
 import requests
 
-from troposphere import GetAtt, Ref, Template
+from troposphere import Base64, GetAtt, Ref, Join, Template
 # from troposphere.autoscaling import AutoScalingGroup, LaunchConfiguration
 # from troposphere.ec2 import LaunchTemplate
-from troposphere.autoscaling import AutoScalingGroup, LaunchConfiguration, LaunchTemplateSpecification
+from troposphere.autoscaling import AutoScalingGroup, LaunchConfiguration, LaunchTemplateSpecification, Metadata
 from troposphere.ec2 import EBSBlockDevice, LaunchTemplate, LaunchTemplateCreditSpecification, LaunchTemplateBlockDeviceMapping, LaunchTemplateData, IamInstanceProfile
 from troposphere.ecs import Cluster, ClusterSetting
 from troposphere.ec2 import SecurityGroup, SecurityGroupIngress, SecurityGroupRule
 from troposphere.iam import Role, Policy, InstanceProfile
-
+from troposphere.cloudformation import Init, InitConfig, InitFiles, InitFile
+from troposphere.cloudformation import InitServices, InitService
 from troposphere.ec2 import CreditSpecification
 
 image_id = "ami-09cec0d91e6d220ea"
@@ -90,11 +91,45 @@ ecs_role = Role(
                         "ecr:GetAuthorizationToken"
                     ],
                     "Resource": "*"
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": [ 
+                        "s3:ListBucket",
+                        "s3:GetBucketLocation",
+                        "s3:GetObject"
+                    ],
+                    "Resource": Join("", [
+                        "arn:aws:s3:::",
+                        Ref("AWS::AccountId"),
+                        "/mgmt.weblox.io"
+                    ])
+                },
+                {
+                    "Effect": "Allow",
+                    "Action": "s3:PutObject",
+                    "Resource": Join("", [
+                        "arn:aws:s3:::",
+                        Ref("AWS::AccountId"),
+                        "/mgmt.weblox.io",
+                        "/logs/"
+                    ])
+                },
+                {
+                    "Effect": "Deny",
+                    "Action": "s3:GetObject",
+                    "Resource": Join("", [
+                        "arn:aws:s3:::",
+                        Ref("AWS::AccountId"),
+                        "/mgmt.weblox.io",
+                        "/logs/"
+                    ])
                 }]
             }
         )
     ]
 )
+
 
 template.add_resource(ecs_role)
 
@@ -134,8 +169,72 @@ launch_template = LaunchTemplate(
         KeyName = "live-eu-west-1",
         SecurityGroupIds = [
             GetAtt(security_group, "GroupId")
-        ]
-    )
+        ],
+        UserData = Base64(
+            "#!/bin/bash\n" \
+            "echo 1\n"
+            # "yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm\n" \
+            # "yum install -y https://s3.amazonaws.com/amazoncloudwatch-agent/amazon_linux/amd64/latest/amazon-cloudwatch-agent.rpm\n" \
+            # "yum install -y aws-cfn-bootstrap hibagent\n" \
+            # "/opt/aws/bin/cfn-init -v --region eu-west-1 --stack live-ecs --resource ECSLaunchConfiguration\n" \
+            # "/opt/aws/bin/cfn-signal -e $? --region eu-west-1 --stack live-ecs --resource ECSAutoScalingGroup\n" \
+            # "/usr/bin/enable-ec2-spot-hibernation\n"
+        )
+    ),
+    # Metadata=Metadata(
+    #     Init({
+    #         'config': InitConfig(
+    #             files=InitFiles({
+    #                 '/etc/cfn/cfn-hup.conf': InitFile(
+    #                     content=Join("", 
+    #                         [
+    #                             "[main]\n",
+    #                             "stack=",
+    #                             Ref('AWS::StackId'), 
+    #                             "\n",
+    #                             "region=eu-west-1\n"
+    #                         ]
+    #                     ),
+    #                     mode='000400',
+    #                     owner='root',
+    #                     group='root'
+    #                 ),
+    #                 '/etc/cfn/hooks.d/cfn-auto-reloader.conf': InitFile(
+    #                     content=Join('', ['[cfn-auto-reloader-hook]\n',
+    #                                       'triggers=post.update\n',
+    #                                       'path=Resources.ContainerInstances.Metadata.AWS::CloudFormation::Init\n',  # NOQA
+    #                                       'action=/opt/aws/bin/cfn-init -v ', '--stack ', Ref(  # NOQA
+    #                                           'AWS::StackName'), ' --resource ContainerInstances ', ' --region ', Ref('AWS::Region'), '\n',  # NOQA
+    #                                       'runas=root\n']),
+    #                     mode='000400',
+    #                     owner='root',
+    #                     group='root'
+    #                 )},
+    #             ),
+    #             services=InitServices({
+    #                 'cfn-hup': InitService(
+    #                     ensureRunning='true',
+    #                     enabled='true',
+    #                     files=['/etc/cfn/cfn-hup.conf',
+    #                            '/etc/cfn/hooks.d/cfn-auto-reloader.conf']
+    #                 )}
+    #             ),
+    #             commands={
+    #                 '01_add_instance_to_cluster': [
+    #                     "#!/bin/bash\n" \
+    #                     "echo ECS_CLUSTER=live >> /etc/ecs/ecs.config"
+    #                 ],
+    #                 '02_install_ssm_agent': {'command': Join('',
+    #                                                          ['#!/bin/bash\n',
+    #                                                           'yum -y update\n',  # NOQA
+    #                                                           'curl https://amazon-ssm-eu-west-1.s3.amazonaws.com/latest/linux_amd64/amazon-ssm-agent.rpm -o amazon-ssm-agent.rpm\n',  # NOQA
+    #                                                           'yum install -y amazon-ssm-agent.rpm'  # NOQA
+    #                                                           ])}
+    #             }
+    #         )
+    #     }
+    #     ),
+    # ),
 )
 
 template.add_resource(cluster)

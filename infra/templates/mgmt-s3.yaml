@@ -1,0 +1,22 @@
+Description: eu-west-1 s3
+Resources:
+  euwest1managementbucket:
+    Properties:
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      BucketName: mgmt.weblox.io
+      LifecycleConfiguration:
+        Rules:
+          - ExpirationInDays: 30
+            Id: ExpireLogs
+            Prefix: logs/
+            Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: 'true'
+        BlockPublicPolicy: 'true'
+        IgnorePublicAcls: 'true'
+        RestrictPublicBuckets: 'true'
+    Type: AWS::S3::Bucket
+
