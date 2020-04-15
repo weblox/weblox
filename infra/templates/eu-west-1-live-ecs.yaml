@@ -13,6 +13,16 @@ Resources:
         - Name: containerInsights
           Value: enabled
     Type: AWS::ECS::Cluster
+  euwest1ecsliveapplicationloadbalancer:
+    Properties:
+      IpAddressType: ipv4
+      Scheme: internet-facing
+      Subnets:
+        - subnet-0777c674d3018efd6
+        - subnet-0dec29b6660100d8d
+        - subnet-095d86cbe447af65e
+      Type: application
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
   euwest1ecsliveautoscalinggroup:
     Properties:
       LaunchTemplate:

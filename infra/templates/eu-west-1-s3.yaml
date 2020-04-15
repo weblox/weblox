@@ -2,6 +2,7 @@ Description: eu-west-1 s3
 Resources:
   euwest1managementbucket:
     Properties:
+      AccessControl: LogDeliveryWrite
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:

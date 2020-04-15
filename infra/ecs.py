@@ -12,6 +12,8 @@ from troposphere.cloudformation import Init, InitConfig, InitFiles, InitFile
 from troposphere.cloudformation import InitServices, InitService
 from troposphere.ec2 import CreditSpecification
 
+from troposphere.elasticloadbalancingv2 import LoadBalancer, LoadBalancerAttributes, Listener, TargetGroup
+
 image_id = "ami-09cec0d91e6d220ea"
 vpc_id = "vpc-0e2786487ff4f2ef4"
 region = "eu-west-1"
@@ -194,5 +196,36 @@ auto_scaling_group = AutoScalingGroup(
 )
 
 template.add_resource(auto_scaling_group)
+
+# TODO: sort out ipv6 on vpc so can use dualstack here
+application_load_balancer = LoadBalancer(
+    region.replace("-", "") + "ecsliveapplicationloadbalancer",
+    IpAddressType = "ipv4",
+    # LoadBalancerAttributes = [
+    #     LoadBalancerAttributes(
+    #         Key="access_logs.s3.enabled",
+    #         Value = "true"
+    #     ),
+    #     LoadBalancerAttributes(
+    #         Key="access_logs.s3.bucket",
+    #         Value = "mgmt.eu-west-1.weblox.io"
+    #     ),
+    #     LoadBalancerAttributes(
+    #         Key="access_logs.s3.prefix",
+    #         Value = "logs"            
+    #     )
+    # ],
+    Scheme = "internet-facing",
+    Subnets = [
+        "subnet-0777c674d3018efd6",
+        "subnet-0dec29b6660100d8d",
+        "subnet-095d86cbe447af65e"
+    ],
+    Type = "application"
+)
+
+
+template.add_resource(application_load_balancer)
+
 
 print(template.to_yaml())
