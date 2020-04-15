@@ -78,6 +78,7 @@ ecs_role = Role(
                 "Statement": [{
                     "Effect": "Allow",
                     "Action": [
+                        "ec2:DescribeInstances",
                         "ecs:CreateCluster",
                         "ecs:DeregisterContainerInstance",
                         "ecs:DiscoverPollEndpoint",
@@ -169,63 +170,9 @@ launch_template = LaunchTemplate(
         ],
         UserData = Base64(
             "#!/bin/bash\n" \
-            "/usr/bin/yum install -y awscli && aws s3 cp s3://mgmt.eu-west-1.weblox.io/init.sh /root/init.sh && chmod 700 /root/init.sh && /root/init.sh\n"
+            "/usr/bin/yum install -y awscli && aws s3 cp s3://mgmt.eu-west-1.weblox.io/bootstrap/bootstrap.sh /root/bootstrap.sh && chmod 700 /root/bootstrap.sh && /root/bootstrap.sh\n"
         )
     ),
-    # Metadata=Metadata(
-    #     Init({
-    #         'config': InitConfig(
-    #             files=InitFiles({
-    #                 '/etc/cfn/cfn-hup.conf': InitFile(
-    #                     content=Join("", 
-    #                         [
-    #                             "[main]\n",
-    #                             "stack=",
-    #                             Ref('AWS::StackId'), 
-    #                             "\n",
-    #                             "region=eu-west-1\n"
-    #                         ]
-    #                     ),
-    #                     mode='000400',
-    #                     owner='root',
-    #                     group='root'
-    #                 ),
-    #                 '/etc/cfn/hooks.d/cfn-auto-reloader.conf': InitFile(
-    #                     content=Join('', ['[cfn-auto-reloader-hook]\n',
-    #                                       'triggers=post.update\n',
-    #                                       'path=Resources.ContainerInstances.Metadata.AWS::CloudFormation::Init\n',  # NOQA
-    #                                       'action=/opt/aws/bin/cfn-init -v ', '--stack ', Ref(  # NOQA
-    #                                           'AWS::StackName'), ' --resource ContainerInstances ', ' --region ', Ref('AWS::Region'), '\n',  # NOQA
-    #                                       'runas=root\n']),
-    #                     mode='000400',
-    #                     owner='root',
-    #                     group='root'
-    #                 )},
-    #             ),
-    #             services=InitServices({
-    #                 'cfn-hup': InitService(
-    #                     ensureRunning='true',
-    #                     enabled='true',
-    #                     files=['/etc/cfn/cfn-hup.conf',
-    #                            '/etc/cfn/hooks.d/cfn-auto-reloader.conf']
-    #                 )}
-    #             ),
-    #             commands={
-    #                 '01_add_instance_to_cluster': [
-    #                     "#!/bin/bash\n" \
-    #                     "echo ECS_CLUSTER=live >> /etc/ecs/ecs.config"
-    #                 ],
-    #                 '02_install_ssm_agent': {'command': Join('',
-    #                                                          ['#!/bin/bash\n',
-    #                                                           'yum -y update\n',  # NOQA
-    #                                                           'curl https://amazon-ssm-eu-west-1.s3.amazonaws.com/latest/linux_amd64/amazon-ssm-agent.rpm -o amazon-ssm-agent.rpm\n',  # NOQA
-    #                                                           'yum install -y amazon-ssm-agent.rpm'  # NOQA
-    #                                                           ])}
-    #             }
-    #         )
-    #     }
-    #     ),
-    # ),
 )
 
 template.add_resource(cluster)

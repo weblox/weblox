@@ -42,8 +42,8 @@ Resources:
         SecurityGroupIds:
           - !GetAtt 'euwest1ecslivesg.GroupId'
         UserData: !Base64 "#!/bin/bash\n/usr/bin/yum install -y awscli && aws s3 cp\
-          \ s3://mgmt.eu-west-1.weblox.io/init.sh /root/init.sh && chmod 700 /root/init.sh\
-          \ && /root/init.sh\n"
+          \ s3://mgmt.eu-west-1.weblox.io/bootstrap/bootstrap.sh /root/bootstrap.sh\
+          \ && chmod 700 /root/bootstrap.sh && /root/bootstrap.sh\n"
       LaunchTemplateName: ecs-live-launch-template
     Type: AWS::EC2::LaunchTemplate
   euwest1ecslivesg:
@@ -78,6 +78,7 @@ Resources:
         - PolicyDocument:
             Statement:
               - Action:
+                  - ec2:DescribeInstances
                   - ecs:CreateCluster
                   - ecs:DeregisterContainerInstance
                   - ecs:DiscoverPollEndpoint
