@@ -52,34 +52,32 @@ management_bucket_policy = BucketPolicy(
                     "AWS": "arn:aws:iam::156460612806:root"
                 },
                 "Action": "s3:PutObject",
-                "Resource": "arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs/AWSLogs/156460612806/*"
-                },
-                {
+                "Resource": Sub("arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs/AWSLogs/${AWS::AccountId}/*"),
+            },
+            {
                 "Effect": "Allow",
                 "Principal": {
                     "Service": "delivery.logs.amazonaws.com"
                 },
                 "Action": "s3:PutObject",
-                "Resource": "arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs/AWSLogs/156460612806/*",
+                "Resource": Sub("arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs/AWSLogs/${AWS::AccountId}/*"),
                 "Condition": {
                     "StringEquals": {
                         "s3:x-amz-acl": "bucket-owner-full-control"
-                        }
                     }
-                },
-                {
+                }
+            },
+            {
                 "Effect": "Allow",
                 "Principal": {
                     "Service": "delivery.logs.amazonaws.com"
                 },
                 "Action": "s3:GetBucketAcl",
                 "Resource": "arn:aws:s3:::mgmt.eu-west-1.weblox.io"
-                }
-            ]
+            }
+        ]
     }   
 )
-
-# 837380460554
 
 template.add_resource(management_bucket_policy)
 

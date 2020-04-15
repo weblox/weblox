@@ -2,7 +2,6 @@ Description: eu-west-1 s3
 Resources:
   euwest1managementbucket:
     Properties:
-      AccessControl: LogDeliveryWrite
       BucketEncryption:
         ServerSideEncryptionConfiguration:
           - ServerSideEncryptionByDefault:
@@ -20,4 +19,29 @@ Resources:
         IgnorePublicAcls: 'true'
         RestrictPublicBuckets: 'true'
     Type: AWS::S3::Bucket
+  euwest1managementbucketpolicy:
+    Properties:
+      Bucket: !Ref 'euwest1managementbucket'
+      PolicyDocument:
+        Statement:
+          - Action: s3:PutObject
+            Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::156460612806:root
+            Resource: !Sub 'arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs/AWSLogs/${AWS::AccountId}/*'
+          - Action: s3:PutObject
+            Condition:
+              StringEquals:
+                s3:x-amz-acl: bucket-owner-full-control
+            Effect: Allow
+            Principal:
+              Service: delivery.logs.amazonaws.com
+            Resource: !Sub 'arn:aws:s3:::mgmt.eu-west-1.weblox.io/logs/AWSLogs/${AWS::AccountId}/*'
+          - Action: s3:GetBucketAcl
+            Effect: Allow
+            Principal:
+              Service: delivery.logs.amazonaws.com
+            Resource: arn:aws:s3:::mgmt.eu-west-1.weblox.io
+        Version: '2012-10-17'
+    Type: AWS::S3::BucketPolicy
 

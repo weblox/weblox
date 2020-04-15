@@ -201,20 +201,20 @@ template.add_resource(auto_scaling_group)
 application_load_balancer = LoadBalancer(
     region.replace("-", "") + "ecsliveapplicationloadbalancer",
     IpAddressType = "ipv4",
-    # LoadBalancerAttributes = [
-    #     LoadBalancerAttributes(
-    #         Key="access_logs.s3.enabled",
-    #         Value = "true"
-    #     ),
-    #     LoadBalancerAttributes(
-    #         Key="access_logs.s3.bucket",
-    #         Value = "mgmt.eu-west-1.weblox.io"
-    #     ),
-    #     LoadBalancerAttributes(
-    #         Key="access_logs.s3.prefix",
-    #         Value = "logs"            
-    #     )
-    # ],
+    LoadBalancerAttributes = [
+        LoadBalancerAttributes(
+            Key="access_logs.s3.enabled",
+            Value = "true"
+        ),
+        LoadBalancerAttributes(
+            Key="access_logs.s3.bucket",
+            Value = "mgmt.eu-west-1.weblox.io"
+        ),
+        LoadBalancerAttributes(
+            Key="access_logs.s3.prefix",
+            Value = "logs"            
+        )
+    ],
     Scheme = "internet-facing",
     Subnets = [
         "subnet-0777c674d3018efd6",
