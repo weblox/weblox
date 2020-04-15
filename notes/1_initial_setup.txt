@@ -1,0 +1,11 @@
+setup venv:
+
+$ virtualenv -p /usr/bin/python3.7 venv
+Running virtualenv with interpreter /usr/bin/python3.7
+Sort out Docker image for infra
+DNS on cloudflare and setup gmail
+Setup a free tier AWS account
+Setup an IAM user
+Setup an Access Key and update docker image to use AWS API
+
+

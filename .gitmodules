@@ -1,0 +1,3 @@
+[submodule "troposphere"]
+	path = troposphere
+	url = git@github.com:cloudtools/troposphere.git

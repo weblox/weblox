@@ -1,0 +1,6 @@
+troposphere
+troposphere/*
+venv/*
+*.swp
+.vscode*
+infra/templates/*
