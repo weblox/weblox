@@ -11,9 +11,9 @@ from troposphere.iam import Role, Policy, InstanceProfile
 from troposphere.cloudformation import Init, InitConfig, InitFiles, InitFile
 from troposphere.cloudformation import InitServices, InitService
 from troposphere.ec2 import CreditSpecification
-from troposphere.certificatemanager import Certificate
-from troposphere.elasticloadbalancingv2 import Action, LoadBalancer, LoadBalancerAttributes, Listener, RedirectConfig, TargetGroup
-from troposphere.route53 import RecordSetGroup, RecordSet
+# from troposphere.certificatemanager import Certificate
+from troposphere.elasticloadbalancingv2 import Action, Certificate, FixedResponseConfig, LoadBalancer, LoadBalancerAttributes, Listener, ListenerCertificate, RedirectConfig, TargetGroup
+from troposphere.route53 import RecordSetGroup, RecordSet, AliasTarget
 from troposphere.cloudformation import AWSCustomObject
 
 
@@ -27,7 +27,7 @@ class CustomCertificate(AWSCustomObject):
     }
 
 class CustomIssuedCertificate(AWSCustomObject):
-    resource_type = "Custom::Certificate"
+    resource_type = "Custom::IssuedCertificate"
 
     props = {
         'CertificateArn': (str, True),
@@ -35,7 +35,7 @@ class CustomIssuedCertificate(AWSCustomObject):
     }
 
 class CustomCertificateDNSRecord(AWSCustomObject):
-    resource_type = "Custom::Certificate"
+    resource_type = "Custom::CertificateDNSRecord"
 
     props = {
         'CertificateArn': (str, True),
@@ -76,6 +76,34 @@ security_group_ingress_cluster = SecurityGroupIngress(
 template.add_resource(security_group)
 template.add_resource(security_group_ingress_cluster)
 template.add_resource(security_group_ingress_management)
+
+alb_security_group = SecurityGroup(
+    region.replace("-", "") + "ecslivealbsg",
+    GroupDescription = "Security Group for ECS Live Cluster",
+    VpcId = vpc_id
+)
+
+alb_security_group_ingress_http = SecurityGroupIngress(
+    region.replace("-", "") + "ecslivesgalbingresshttp",
+    GroupId = GetAtt(alb_security_group, "GroupId"),
+    CidrIp = "0.0.0.0/32",
+    IpProtocol = "tcp",
+    FromPort = "80",
+    ToPort = "80"
+)
+
+alb_security_group_ingress_https = SecurityGroupIngress(
+    region.replace("-", "") + "ecslivesgalbingresshttps",
+    GroupId = GetAtt(security_group, "GroupId"),
+    CidrIp = "0.0.0.0/32",
+    IpProtocol = "tcp",
+    FromPort = "443",
+    ToPort = "443"
+)
+
+template.add_resource(alb_security_group)
+template.add_resource(alb_security_group_ingress_http)
+template.add_resource(alb_security_group_ingress_https)
 
 cluster = Cluster(
     region.replace("-", "") + "ecslive",
@@ -246,6 +274,10 @@ application_load_balancer = LoadBalancer(
         )
     ],
     Scheme = "internet-facing",
+    SecurityGroups = [
+        Ref(alb_security_group),
+        Ref(security_group)
+    ],
     Subnets = [
         "subnet-0777c674d3018efd6",
         "subnet-0dec29b6660100d8d",
@@ -275,13 +307,25 @@ origin_issued_certificate = CustomIssuedCertificate(
 )
 
 certificate_dns_record = CustomCertificateDNSRecord(
-    region.replace("-", "") + "ecsliveorigindnsrecord",
+    region.replace("-", "") + "ecsliveorigincertificatednsrecord",
     CertificateArn = Ref(origin_certificate),
     DomainName = domain_name,
     ServiceToken = Sub('arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-certificate-provider')
 )
 
-domain_validation_record = RecordSetGroup(
+# public_recordset = RecordSet(
+#     region.replace("-", "") + "ecsliveoriginalbdnsrecord",
+#     # AliasTarget = AliasTarget(
+#     #     DNSName = GetAtt(application_load_balancer, "DNSName"),
+#     #     EvaluateTargetHealth = "false",
+#     #     HostedZoneId = GetAtt(application_load_balancer, "CanonicalHostedZoneID")
+#     # ),
+#     Name = "origin.public.eu-west-1.weblox.io",
+#     Type = "A",
+#     TTL = "1"
+# )
+
+alb_record_set_group = RecordSetGroup(
     region.replace("-", "") + "ecsliveorigindnsrecordsetgroup",
     HostedZoneId = hosted_zone_id,
     RecordSets = [
@@ -292,8 +336,20 @@ domain_validation_record = RecordSetGroup(
             Weight = "1",
             SetIdentifier = Ref(origin_certificate),
             ResourceRecords = [
-                GetAtt (certificate_dns_record, "Value")
+                GetAtt(certificate_dns_record, "Value")
             ]
+        ),
+        RecordSet(
+            "origindnsrecord",
+            AliasTarget = AliasTarget(
+                DNSName = GetAtt(application_load_balancer, "DNSName"),
+                EvaluateTargetHealth = False,
+                HostedZoneId = GetAtt(application_load_balancer, "CanonicalHostedZoneID")
+            ),
+            Name = "origin.public.eu-west-1.weblox.io.",
+            Type = "A",
+            Weight = "1",
+            SetIdentifier = "origin",
         )
     ]
 )
@@ -301,9 +357,8 @@ domain_validation_record = RecordSetGroup(
 template.add_resource(origin_certificate),
 template.add_resource(origin_issued_certificate),
 template.add_resource(certificate_dns_record)
-template.add_resource(domain_validation_record)
+template.add_resource(alb_record_set_group)
 
-# listener
 http_listener = Listener(
     region.replace("-", "") + "ecslivehttplistener",
     DefaultActions = [
@@ -326,13 +381,29 @@ http_listener = Listener(
 https_listener = Listener(
     region.replace("-", "") + "ecslivehttpslistener",
     Certificates = [
-        Ref(origin_certificate)
+        Certificate(
+            CertificateArn = Ref(origin_issued_certificate)
+        )
     ],
-    DefaultActions = [],
+    DefaultActions = [
+        Action(
+            region.replace("-", "") + "ecslivehttpsfixedresponseaction",
+            FixedResponseConfig = FixedResponseConfig(
+                region.replace("-", "") + "ecslivehttpredirectconfig",
+                ContentType = "text/plain",
+                MessageBody = "Service Unavailable",
+                StatusCode = "503"
+            ),
+            Order = 50000,
+            Type = "fixed-response"
+        )
+
+    ],
     LoadBalancerArn = Ref(application_load_balancer),
     Port = 443,
     Protocol = "HTTPS",
-    SslPolicy = "ELBSecurityPolicy-FS-1-2-2019-08"
+    SslPolicy = "ELBSecurityPolicy-FS-1-2-2019-08",
+#    DependsOn = Ref(origin_issued_certificate)
 )
 # FS-1-2-2019-08 (forward secrecy, tls1.2 only)
 
