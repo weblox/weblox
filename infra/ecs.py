@@ -403,7 +403,6 @@ https_listener = Listener(
     Port = 443,
     Protocol = "HTTPS",
     SslPolicy = "ELBSecurityPolicy-FS-1-2-2019-08",
-#    DependsOn = Ref(origin_issued_certificate)
 )
 # FS-1-2-2019-08 (forward secrecy, tls1.2 only)
 
