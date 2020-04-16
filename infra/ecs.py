@@ -86,7 +86,7 @@ alb_security_group = SecurityGroup(
 alb_security_group_ingress_http = SecurityGroupIngress(
     region.replace("-", "") + "ecslivesgalbingresshttp",
     GroupId = GetAtt(alb_security_group, "GroupId"),
-    CidrIp = "0.0.0.0/32",
+    CidrIp = "0.0.0.0/0",
     IpProtocol = "tcp",
     FromPort = "80",
     ToPort = "80"
@@ -95,7 +95,7 @@ alb_security_group_ingress_http = SecurityGroupIngress(
 alb_security_group_ingress_https = SecurityGroupIngress(
     region.replace("-", "") + "ecslivesgalbingresshttps",
     GroupId = GetAtt(security_group, "GroupId"),
-    CidrIp = "0.0.0.0/32",
+    CidrIp = "0.0.0.0/0",
     IpProtocol = "tcp",
     FromPort = "443",
     ToPort = "443"
