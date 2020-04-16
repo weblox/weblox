@@ -1,3 +1,6 @@
 [submodule "troposphere"]
 	path = troposphere
 	url = git@github.com:cloudtools/troposphere.git
+[submodule "infra/cfn-certificate-provider"]
+	path = infra/cfn-certificate-provider
+	url = https://github.com/binxio/cfn-certificate-provider.git

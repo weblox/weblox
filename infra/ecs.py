@@ -1,6 +1,6 @@
 import requests
 
-from troposphere import Base64, GetAtt, Ref, Join, Template
+from troposphere import Base64, GetAtt, Ref, Join, Sub, Template
 # from troposphere.autoscaling import AutoScalingGroup, LaunchConfiguration
 # from troposphere.ec2 import LaunchTemplate
 from troposphere.autoscaling import AutoScalingGroup, LaunchConfiguration, LaunchTemplateSpecification, Metadata
@@ -11,8 +11,38 @@ from troposphere.iam import Role, Policy, InstanceProfile
 from troposphere.cloudformation import Init, InitConfig, InitFiles, InitFile
 from troposphere.cloudformation import InitServices, InitService
 from troposphere.ec2 import CreditSpecification
+from troposphere.certificatemanager import Certificate
+from troposphere.elasticloadbalancingv2 import Action, LoadBalancer, LoadBalancerAttributes, Listener, RedirectConfig, TargetGroup
+from troposphere.route53 import RecordSetGroup, RecordSet
+from troposphere.cloudformation import AWSCustomObject
 
-from troposphere.elasticloadbalancingv2 import LoadBalancer, LoadBalancerAttributes, Listener, TargetGroup
+
+class CustomCertificate(AWSCustomObject):
+    resource_type = "Custom::Certificate"
+
+    props = {
+        'DomainName': (str, True),
+        'ValidationMethod': (str, True),
+        'ServiceToken': (str, True)
+    }
+
+class CustomIssuedCertificate(AWSCustomObject):
+    resource_type = "Custom::Certificate"
+
+    props = {
+        'CertificateArn': (str, True),
+        'ServiceToken': (str, True)
+    }
+
+class CustomCertificateDNSRecord(AWSCustomObject):
+    resource_type = "Custom::Certificate"
+
+    props = {
+        'CertificateArn': (str, True),
+        'DomainName': (str, True),
+        'ServiceToken': (str, True)
+    }
+
 
 image_id = "ami-09cec0d91e6d220ea"
 vpc_id = "vpc-0e2786487ff4f2ef4"
@@ -67,7 +97,7 @@ ecs_role = Role(
             "Principal": {
                 "Service": "ec2.amazonaws.com"
             }
-        }]    
+        }]
     },
     ManagedPolicyArns = [
         "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
@@ -212,7 +242,7 @@ application_load_balancer = LoadBalancer(
         ),
         LoadBalancerAttributes(
             Key="access_logs.s3.prefix",
-            Value = "logs"            
+            Value = "logs"
         )
     ],
     Scheme = "internet-facing",
@@ -227,5 +257,86 @@ application_load_balancer = LoadBalancer(
 
 template.add_resource(application_load_balancer)
 
+# cert
+domain_name = "origin.public.eu-west-1.weblox.io"
+hosted_zone_id = "Z043770027VJMBJ02BRZB"
+
+origin_certificate = CustomCertificate(
+    region.replace("-", "") + "ecsliveorigincertificate",
+    DomainName = domain_name,
+    ValidationMethod = "DNS",
+    ServiceToken = Sub('arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-certificate-provider')
+)
+
+origin_issued_certificate = CustomIssuedCertificate(
+    region.replace("-", "") + "ecsliveoriginissuedcertificate",
+    CertificateArn = Ref(origin_certificate),
+    ServiceToken = Sub('arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-certificate-provider')
+)
+
+certificate_dns_record = CustomCertificateDNSRecord(
+    region.replace("-", "") + "ecsliveorigindnsrecord",
+    CertificateArn = Ref(origin_certificate),
+    DomainName = domain_name,
+    ServiceToken = Sub('arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:binxio-cfn-certificate-provider')
+)
+
+domain_validation_record = RecordSetGroup(
+    region.replace("-", "") + "ecsliveorigindnsrecordsetgroup",
+    HostedZoneId = hosted_zone_id,
+    RecordSets = [
+        RecordSet(
+            Name = GetAtt(certificate_dns_record, "Name"),
+            Type = GetAtt(certificate_dns_record, "Type"),
+            TTL = "60",
+            Weight = "1",
+            SetIdentifier = Ref(origin_certificate),
+            ResourceRecords = [
+                GetAtt (certificate_dns_record, "Value")
+            ]
+        )
+    ]
+)
+
+template.add_resource(origin_certificate),
+template.add_resource(origin_issued_certificate),
+template.add_resource(certificate_dns_record)
+template.add_resource(domain_validation_record)
+
+# listener
+http_listener = Listener(
+    region.replace("-", "") + "ecslivehttplistener",
+    DefaultActions = [
+        Action(
+            region.replace("-", "") + "ecslivehttpredirectaction",
+            RedirectConfig = RedirectConfig(
+                region.replace("-", "") + "ecslivehttpredirectconfig",
+                Port = "443",
+                Protocol = "HTTPS",
+                StatusCode = "HTTP_301"
+            ),
+            Type = "redirect"
+        )
+    ],
+    LoadBalancerArn = Ref(application_load_balancer),
+    Port = 80,
+    Protocol = "HTTP"
+)
+
+https_listener = Listener(
+    region.replace("-", "") + "ecslivehttpslistener",
+    Certificates = [
+        Ref(origin_certificate)
+    ],
+    DefaultActions = [],
+    LoadBalancerArn = Ref(application_load_balancer),
+    Port = 443,
+    Protocol = "HTTPS",
+    SslPolicy = "ELBSecurityPolicy-FS-1-2-2019-08"
+)
+# FS-1-2-2019-08 (forward secrecy, tls1.2 only)
+
+template.add_resource(http_listener)
+template.add_resource(https_listener)
 
 print(template.to_yaml())
